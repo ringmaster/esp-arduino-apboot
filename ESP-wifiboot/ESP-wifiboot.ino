@@ -9,6 +9,7 @@ WiFiServer server(80);
 const char* ssid = "Cloud Setup";
 String st;
 bool esidStored;
+int webtype;
 
 int WifiStatus = WL_IDLE_STATUS;
 IPAddress ip; 
@@ -33,7 +34,7 @@ int testWifi(void) {
   return(10);
 } 
 
-int mdns1(int webtype)
+int mdns1()
 {
   // Check for any mDNS queries and send responses
   //mdns.update();
@@ -41,6 +42,7 @@ int mdns1(int webtype)
   // Check if a client has connected
   WiFiClient client = server.available();
   if (!client) {
+    Serial.println("No client connected, running the mdns function");
     return(20);
   }
   Serial.println("");
@@ -153,7 +155,7 @@ int mdns1(int webtype)
 
 //webtype 0 - AP mode, webtype 1 - client mode
 //MDNS only works for Client mode at this time!
-void launchWebServer(int webtype) {
+void launchWebServer() {
           Serial.println("");
           Serial.println("Starting Web Server...");
           // Start the server
@@ -181,12 +183,14 @@ void launchWebServer(int webtype) {
           server.begin();
           Serial.println("Server started");
           digitalWrite(0, HIGH);
-          
-          int b = 20;
-          int c = 0;
-          while(b == 20) { 
-             b = mdns1(webtype);
-           }
+
+          //call mdns1 once, then exit to main loop and call when it is necessary
+          mdns1();
+//          int b = 20;       //local variable which detects if a client is connected
+//          int c = 0;
+//          while(b == 20) { 
+//             b = mdns1(webtype);
+//           }
 }
 
 
@@ -241,7 +245,8 @@ void setupAP(void) {
   Serial.println("Soft AP Mode");
   Serial.print("SSID: ");
   Serial.println(ssid);
-  launchWebServer(0);   //Call launch web, but let it know that this is in AP mode
+  webtype = 0;
+  launchWebServer();   //Call launch web, but let it know that this is in AP mode
   Serial.println("over");
 }
 
@@ -306,7 +311,8 @@ void setup() {
       //if testWifi fails, call launchWebServer with 0 as input - this means AP Mode?
       if ( testWifi() == 20 ) { 
           Serial.println("Client connection failed, launching web with parameter 0");
-          launchWebServer(1);
+          webtype = 1;
+          launchWebServer();
           return;
       }
   }
@@ -318,16 +324,19 @@ void setup() {
 
 
 void loop() {
-  // put your main code here, to run repeatedly:
-   if ( WifiStatus != WL_CONNECTED) { 
-    Serial.println("Couldn't get a wifi connection");
-  } 
-  // if you are connected, print out info about the connection:
-  else {
- //print the local IP address
-  ip = WiFi.localIP();
-  Serial.println(ip);
-  }
-  delay(500);
+
+  mdns1();
+  
+//  // put your main code here, to run repeatedly:
+//   if ( WifiStatus != WL_CONNECTED) { 
+//    Serial.println("Couldn't get a wifi connection");
+//  } 
+//  // if you are connected, print out info about the connection:
+//  else {
+// //print the local IP address
+//  ip = WiFi.localIP();
+//  Serial.println(ip);
+//  }
+//  delay(500);
 
 }
