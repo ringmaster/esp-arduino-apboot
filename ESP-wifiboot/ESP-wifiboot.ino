@@ -20,19 +20,23 @@ int testWifi(void) {
   Serial.print("Wifi Status: ");
   while ( c < 20 ) {
     //if connection is successful, return "20" for success and exit function
-    if (WiFi.status() == WL_CONNECTED) { return(20); } 
+    if (WiFi.status() == WL_CONNECTED) {
+      digitalWrite(0, HIGH);
+      return(20);
+    } 
     delay(500);
     Serial.print(WiFi.status());    
     c++;
   }
   Serial.println("Connect timed out, opening AP");
+  digitalWrite(0, LOW);
   return(10);
 } 
 
 int mdns1(int webtype)
 {
   // Check for any mDNS queries and send responses
-  mdns.update();
+  //mdns.update();
   
   // Check if a client has connected
   WiFiClient client = server.available();
@@ -64,7 +68,7 @@ int mdns1(int webtype)
   Serial.println(req);
   client.flush(); 
   String s;
-  if ( webtype == 1 ) {
+  if ( webtype == 0 ) {
       if (req == "/")
       {
         IPAddress ip = WiFi.softAPIP();
@@ -147,22 +151,37 @@ int mdns1(int webtype)
   return(20);
 }
 
-//
-void launchWeb(int webtype) {
+//webtype 0 - AP mode, webtype 1 - client mode
+//MDNS only works for Client mode at this time!
+void launchWebServer(int webtype) {
           Serial.println("");
-          Serial.println("WiFi connected");
-          Serial.println(WiFi.localIP());
-          Serial.println(WiFi.softAPIP());
-          if (!mdns.begin("esp8266", WiFi.softAPIP())) {
-            Serial.println("Error setting up MDNS responder!");
-            while(1) { 
-              delay(1000);
-            }
-          }
-          Serial.println("mDNS responder started");
+          Serial.println("Starting Web Server...");
           // Start the server
+          //AP Mode
+          if (webtype == 0){
+              Serial.println("AP IP Address: ");
+              Serial.println(WiFi.softAPIP());
+            
+          }
+          //Client mode
+          else if (webtype == 1){
+                Serial.println("Client IP Address ");
+                Serial.println(WiFi.localIP()); 
+                if (!mdns.begin("Cloud", WiFi.localIP())) {
+                  Serial.println("Error setting up AP MDNS responder!");
+                  while(1) { 
+                    delay(1000);
+                  }
+              }
+                Serial.println("mDNS responder started");
+
+               
+          }
+          
           server.begin();
-          Serial.println("Server started");   
+          Serial.println("Server started");
+          digitalWrite(0, HIGH);
+          
           int b = 20;
           int c = 0;
           while(b == 20) { 
@@ -217,11 +236,12 @@ void setupAP(void) {
   st += "</ul>";
   delay(100);
   //create an AP with SSID as declared in the global vars
+  WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid);
   Serial.println("Soft AP Mode");
   Serial.print("SSID: ");
   Serial.println(ssid);
-  launchWeb(1);   //Call launch web, but let it know that this is in AP mode
+  launchWebServer(0);   //Call launch web, but let it know that this is in AP mode
   Serial.println("over");
 }
 
@@ -232,6 +252,11 @@ void setupAP(void) {
 
 
 void setup() {
+
+  //Setup LED Diagnostic
+  pinMode(0, OUTPUT);
+
+  
   Serial.begin(115200);
   EEPROM.begin(512);
   delay(10);
@@ -271,17 +296,17 @@ void setup() {
   //try to connect to it.  Else, create an AP and search for networks
   if ( esid.length() > 1 ) {
       Serial.println("Stored SSID length greater than 1");
-      // test esid 
+      // test stored esid
       WiFi.begin(esid.c_str(), epass.c_str());
       Serial.println("Starting connection with ");
       Serial.print("ESID ");
       Serial.println(esid.c_str());
       Serial.print("PASS ");
       Serial.println(epass.c_str());
-      //if testWifi fails, call launchWeb with 0 as input - this means Access point mode?
+      //if testWifi fails, call launchWebServer with 0 as input - this means AP Mode?
       if ( testWifi() == 20 ) { 
           Serial.println("Client connection failed, launching web with parameter 0");
-          launchWeb(0);
+          launchWebServer(1);
           return;
       }
   }
