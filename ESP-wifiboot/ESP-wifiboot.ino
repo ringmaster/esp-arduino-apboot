@@ -6,44 +6,14 @@
 MDNSResponder mdns;
 WiFiServer server(80);
 
-const char* ssid = "BUBBLES";
+const char* ssid = "Cloud Setup";
 String st;
+bool esidStored;
 
-void setup() {
-  Serial.begin(115200);
-  EEPROM.begin(512);
-  delay(10);
-  Serial.println();
-  Serial.println();
-  Serial.println("Startup");
-  // read eeprom for ssid and pass
-  Serial.println("Reading EEPROM ssid");
-  String esid;
-  for (int i = 0; i < 32; ++i)
-    {
-      esid += char(EEPROM.read(i));
-    }
-  Serial.print("SSID: ");
-  Serial.println(esid);
-  Serial.println("Reading EEPROM pass");
-  String epass = "";
-  for (int i = 32; i < 96; ++i)
-    {
-      epass += char(EEPROM.read(i));
-    }
-  Serial.print("PASS: ");
-  Serial.println(epass);  
-  if ( esid.length() > 1 ) {
-      // test esid 
-      WiFi.begin(esid.c_str(), epass.c_str());
-      if ( testWifi() == 20 ) { 
-          launchWeb(0);
-          return;
-      }
-  }
-  setupAP(); 
-}
+int status = WL_IDLE_STATUS;
+IPAddress ip; 
 
+//This function simply checks that a Wifi network has been established
 int testWifi(void) {
   int c = 0;
   Serial.println("Waiting for Wifi to connect");  
@@ -56,78 +26,6 @@ int testWifi(void) {
   Serial.println("Connect timed out, opening AP");
   return(10);
 } 
-
-void launchWeb(int webtype) {
-          Serial.println("");
-          Serial.println("WiFi connected");
-          Serial.println(WiFi.localIP());
-          Serial.println(WiFi.softAPIP());
-          if (!mdns.begin("esp8266", WiFi.localIP())) {
-            Serial.println("Error setting up MDNS responder!");
-            while(1) { 
-              delay(1000);
-            }
-          }
-          Serial.println("mDNS responder started");
-          // Start the server
-          server.begin();
-          Serial.println("Server started");   
-          int b = 20;
-          int c = 0;
-          while(b == 20) { 
-             b = mdns1(webtype);
-           }
-}
-
-void setupAP(void) {
-  
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(100);
-  int n = WiFi.scanNetworks();
-  Serial.println("scan done");
-  if (n == 0)
-    Serial.println("no networks found");
-  else
-  {
-    Serial.print(n);
-    Serial.println(" networks found");
-    for (int i = 0; i < n; ++i)
-     {
-      // Print SSID and RSSI for each network found
-      Serial.print(i + 1);
-      Serial.print(": ");
-      Serial.print(WiFi.SSID(i));
-      Serial.print(" (");
-      Serial.print(WiFi.RSSI(i));
-      Serial.print(")");
-      Serial.println((WiFi.encryptionType(i) == ENC_TYPE_NONE)?" ":"*");
-      delay(10);
-     }
-  }
-  Serial.println(""); 
-  st = "<ul>";
-  for (int i = 0; i < n; ++i)
-    {
-      // Print SSID and RSSI for each network found
-      st += "<li>";
-      st +=i + 1;
-      st += ": ";
-      st += WiFi.SSID(i);
-      st += " (";
-      st += WiFi.RSSI(i);
-      st += ")";
-      st += (WiFi.encryptionType(i) == ENC_TYPE_NONE)?" ":"*";
-      st += "</li>";
-    }
-  st += "</ul>";
-  delay(100);
-  WiFi.softAP(ssid);
-  Serial.println("softap");
-  Serial.println("");
-  launchWeb(1);
-  Serial.println("over");
-}
 
 int mdns1(int webtype)
 {
@@ -205,6 +103,8 @@ int mdns1(int webtype)
             Serial.println(qpass[i]); 
           }    
         EEPROM.commit();
+        esidStored = true;
+        
         s = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>Hello from ESP8266 ";
         s += "Found ";
         s += req;
@@ -245,9 +145,151 @@ int mdns1(int webtype)
   return(20);
 }
 
+//
+void launchWeb(int webtype) {
+          Serial.println("");
+          Serial.println("WiFi connected");
+          Serial.println(WiFi.localIP());
+          Serial.println(WiFi.softAPIP());
+          if (!mdns.begin("esp8266", WiFi.softAPIP())) {
+            Serial.println("Error setting up MDNS responder!");
+            while(1) { 
+              delay(1000);
+            }
+          }
+          Serial.println("mDNS responder started");
+          // Start the server
+          server.begin();
+          Serial.println("Server started");   
+          int b = 20;
+          int c = 0;
+          while(b == 20) { 
+             b = mdns1(webtype);
+           }
+}
+
+
+//This function searches for networks and stores them in the WiFi struct.  Called when 
+//stored SSID connection fails or if there is no stored SSID
+void setupAP(void) {
+  
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+  int n = WiFi.scanNetworks();
+  Serial.println("scan done");
+  if (n == 0)
+    Serial.println("no networks found");
+  else
+  {
+    Serial.print(n);
+    Serial.println(" networks found");
+    for (int i = 0; i < n; ++i)
+     {
+      // Print SSID and RSSI for each network found
+      Serial.print(i + 1);
+      Serial.print(": ");
+      Serial.print(WiFi.SSID(i));
+      Serial.print(" (");
+      Serial.print(WiFi.RSSI(i));
+      Serial.print(")");
+      Serial.println((WiFi.encryptionType(i) == ENC_TYPE_NONE)?" ":"*");
+      delay(10);
+     }
+  }
+  Serial.println(""); 
+  st = "<ul>";
+  for (int i = 0; i < n; ++i)
+    {
+      // Print SSID and RSSI for each network found
+      st += "<li>";
+      st +=i + 1;
+      st += ": ";
+      st += WiFi.SSID(i);
+      st += " (";
+      st += WiFi.RSSI(i);
+      st += ")";
+      st += (WiFi.encryptionType(i) == ENC_TYPE_NONE)?" ":"*";
+      st += "</li>";
+    }
+  st += "</ul>";
+  delay(100);
+  WiFi.softAP(ssid);
+  Serial.println("softap");
+  Serial.println("");
+  launchWeb(1);
+  Serial.println("over");
+}
+
+
+
+
+
+
+
+void setup() {
+  Serial.begin(115200);
+  EEPROM.begin(512);
+  delay(10);
+  Serial.println();
+  Serial.println();
+  Serial.println("Startup");
+  // read eeprom for ssid and pass
+  Serial.println("Reading EEPROM ssid");
+  String esid;              //string which contains the SSID stored within EEPROM
+  for (int i = 0; i < 32; ++i)
+    {
+      esid += char(EEPROM.read(i));
+    }
+  Serial.print("SSID: ");
+  if (esidStored) {
+    Serial.println(esid);
+  }
+  else{
+    Serial.println("None Stored");
+  }
+  
+  Serial.println("Reading EEPROM pass");
+  String epass = "";
+  for (int i = 32; i < 96; ++i)
+    {
+      epass += char(EEPROM.read(i));
+    }
+  Serial.print("PASS: ");
+  if (esidStored) {
+    Serial.println(epass);
+  }
+  else{
+    Serial.println("None Stored");
+  }
+
+  //After reading the stored "esid", if it is valid,
+  //try to connect to it.  Else, create an AP and search for networks
+  if ( esid.length() > 1 ) {
+      // test esid 
+      WiFi.begin(esid.c_str(), epass.c_str());
+      if ( testWifi() == 20 ) { 
+          launchWeb(0);
+          return;
+      }
+  }
+  //No stored or failed wireless connection.  Create AP to set up wireless
+  setupAP(); 
+}
+
 
 
 void loop() {
   // put your main code here, to run repeatedly:
+   if ( status != WL_CONNECTED) { 
+    Serial.println("Couldn't get a wifi connection");
+  } 
+  // if you are connected, print out info about the connection:
+  else {
+ //print the local IP address
+  ip = WiFi.localIP();
+  Serial.println(ip);
+  }
+  delay(500);
 
 }
