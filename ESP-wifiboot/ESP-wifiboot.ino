@@ -34,6 +34,7 @@ int testWifi(void) {
   return(10);
 } 
 
+//Manage HTTP requests
 int mdns1()
 {
   // Check for any mDNS queries and send responses
@@ -42,7 +43,7 @@ int mdns1()
   // Check if a client has connected
   WiFiClient client = server.available();
   if (!client) {
-    Serial.println("No client connected, running the mdns function");
+    //Serial.println("No client connected, running the mdns function");
     return(20);
   }
   Serial.println("");
@@ -326,17 +327,5 @@ void setup() {
 void loop() {
 
   mdns1();
-  
-//  // put your main code here, to run repeatedly:
-//   if ( WifiStatus != WL_CONNECTED) { 
-//    Serial.println("Couldn't get a wifi connection");
-//  } 
-//  // if you are connected, print out info about the connection:
-//  else {
-// //print the local IP address
-//  ip = WiFi.localIP();
-//  Serial.println(ip);
-//  }
-//  delay(500);
 
 }
