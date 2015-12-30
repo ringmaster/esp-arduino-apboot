@@ -10,14 +10,16 @@ const char* ssid = "Cloud Setup";
 String st;
 bool esidStored;
 
-int status = WL_IDLE_STATUS;
+int WifiStatus = WL_IDLE_STATUS;
 IPAddress ip; 
 
 //This function simply checks that a Wifi network has been established
 int testWifi(void) {
   int c = 0;
   Serial.println("Waiting for Wifi to connect");  
+  Serial.print("Wifi Status: ");
   while ( c < 20 ) {
+    //if connection is successful, return "20" for success and exit function
     if (WiFi.status() == WL_CONNECTED) { return(20); } 
     delay(500);
     Serial.print(WiFi.status());    
@@ -214,10 +216,12 @@ void setupAP(void) {
     }
   st += "</ul>";
   delay(100);
+  //create an AP with SSID as declared in the global vars
   WiFi.softAP(ssid);
-  Serial.println("softap");
-  Serial.println("");
-  launchWeb(1);
+  Serial.println("Soft AP Mode");
+  Serial.print("SSID: ");
+  Serial.println(ssid);
+  launchWeb(1);   //Call launch web, but let it know that this is in AP mode
   Serial.println("over");
 }
 
@@ -266,14 +270,23 @@ void setup() {
   //After reading the stored "esid", if it is valid,
   //try to connect to it.  Else, create an AP and search for networks
   if ( esid.length() > 1 ) {
+      Serial.println("Stored SSID length greater than 1");
       // test esid 
       WiFi.begin(esid.c_str(), epass.c_str());
+      Serial.println("Starting connection with ");
+      Serial.print("ESID ");
+      Serial.println(esid.c_str());
+      Serial.print("PASS ");
+      Serial.println(epass.c_str());
+      //if testWifi fails, call launchWeb with 0 as input - this means Access point mode?
       if ( testWifi() == 20 ) { 
+          Serial.println("Client connection failed, launching web with parameter 0");
           launchWeb(0);
           return;
       }
   }
   //No stored or failed wireless connection.  Create AP to set up wireless
+  Serial.println("SSID did not exist, creating an AP");
   setupAP(); 
 }
 
@@ -281,7 +294,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-   if ( status != WL_CONNECTED) { 
+   if ( WifiStatus != WL_CONNECTED) { 
     Serial.println("Couldn't get a wifi connection");
   } 
   // if you are connected, print out info about the connection:
