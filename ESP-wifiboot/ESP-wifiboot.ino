@@ -84,12 +84,12 @@ int mdns1()
         s += "</html>\r\n\r\n";
         Serial.println("Sending 200");
       }
-      else if ( req.startsWith("/a?ssid=") ) {
+      else if ( req.startsWith("/ssid=") ) {
         // /a?ssid=blahhhh&pass=poooo
         Serial.println("clearing eeprom");
         for (int i = 0; i < 96; ++i) { EEPROM.write(i, 0); }
         String qsid; 
-        qsid = req.substring(8,req.indexOf('&'));
+        qsid = req.substring(6,req.indexOf('&'));
         Serial.println(qsid);
         Serial.println("");
         String qpass;
@@ -140,8 +140,11 @@ int mdns1()
         s += "</html>\r\n\r\n";
         Serial.println("Sending 200");  
         Serial.println("clearing eeprom");
-        for (int i = 0; i < 96; ++i) { EEPROM.write(i, 0); }
+        for (int i = 0; i < 96; i++) { EEPROM.write(i, 0); }
         EEPROM.commit();
+        esidStored = false;
+        WiFi.disconnect();      //after EEPROM is cleared, disconnect from the current wifi access
+        setup();
       }
       else
       {
@@ -306,12 +309,12 @@ void setup() {
       WiFi.begin(esid.c_str(), epass.c_str());
       Serial.println("Starting connection with ");
       Serial.print("ESID ");
-      Serial.println(esid.c_str());
+      Serial.println(esid);
       Serial.print("PASS ");
-      Serial.println(epass.c_str());
-      //if testWifi fails, call launchWebServer with 0 as input - this means AP Mode?
+      Serial.println(epass);
       if ( testWifi() == 20 ) { 
-          Serial.println("Client connection failed, launching web with parameter 0");
+          Serial.println("");
+          Serial.println("Client Connection Successful");
           webtype = 1;
           launchWebServer();
           return;
